@@ -4,18 +4,18 @@ A cross-platform HTTPS/WebSocket man-in-the-middle proxy for inspecting video ga
 
 ## Features
 
-- **HTTPS Interception**: Terminates SSL connections to inspect encrypted traffic
-- **WebSocket Support**: Full support for WebSocket connections (planned)
-- **Cross-Platform**: Builds for macOS and Windows 11+ (x64 and ARM64)
-- **Simple Configuration**: Use command-line flags or JSON configuration file
-- **Comprehensive Logging**: Detailed logging with error codes for easy debugging
-- **Single Binary**: No dependencies, just download and run
+- **🔒 HTTPS Interception**: Full man-in-the-middle HTTPS proxy with dynamic certificate generation
+- **🔐 Certificate Management**: Automatic CA generation and certificate signing for intercepted domains
+- **🌐 WebSocket Support**: Complete WebSocket upgrade handling and frame inspection
+- **🔍 Transparent Mode**: OS-level traffic interception for capturing ALL network traffic including HTTPS
+- **📱 Cross-Platform**: Supports Windows, macOS, and Linux (x64 and ARM64)
+- **⚙️ Auto-Configuration**: Automatic system proxy setup with `--enable`/`--disable` flags  
+- **📊 Comprehensive Logging**: Structured logging with error codes and decrypted HTTPS traffic inspection
+- **🎯 Game-Friendly**: Captures traffic from games that ignore proxy settings
+- **📦 Single Binary**: No dependencies, just download and run
+- **🔧 Configurable**: Domain-based filtering for selective HTTPS interception
 
 ## Installation
-
-### Pre-built Binaries
-
-Download the latest release for your platform from the [releases page](https://github.com/pshima/breakthru/releases).
 
 ### Build from Source
 
@@ -54,6 +54,12 @@ make install
 
 # Use a configuration file
 ./breakthru -config config.json
+
+# Enable system proxy (Windows/macOS)
+./breakthru -enable -port 8080
+
+# Disable system proxy (Windows/macOS)  
+./breakthru -disable
 ```
 
 ### Command-Line Options
@@ -66,6 +72,8 @@ make install
 -log string      Path to log file (default "breakthru.log")
 -verbose         Enable verbose logging
 -version         Show version information
+-enable          Enable system proxy (Windows/macOS)
+-disable         Disable system proxy (Windows/macOS)
 ```
 
 ### Configuration File
@@ -80,91 +88,133 @@ Create a JSON configuration file for more advanced settings:
   "log_file": "breakthru.log",
   "verbose": false,
   "https_mode": true,
+  "buffer_size": 32768,
+  
+  // HTTPS Interception Settings
+  "https_interception": true,
+  "https_transparent": false,
+  "https_skip_verify": false,
+  "https_log_bodies": true,
+  "https_max_body_size": 1048576,
+  
+  // Certificate Management
+  "cert_store_dir": "./certs",
+  "auto_generate_ca": true,
   "ca_cert": "/path/to/ca-cert.pem",
   "ca_key": "/path/to/ca-key.pem",
-  "target_hosts": ["api.example.com", "game.example.com"],
-  "buffer_size": 32768
+  "cert_validity_days": 365,
+  "cert_key_size": 2048,
+  "cert_cleanup_enabled": true,
+  "cert_cleanup_max_age_days": 30,
+  
+  // Domain Filtering
+  "https_bypass_domains": ["banking.com", "*.gov"],
+  "https_only_domains": ["api.example.com", "*.game-api.com"],
+  
+  "target_hosts": ["api.example.com", "game.example.com"]
 }
 ```
 
-## Practical Examples
+## HTTPS Interception Setup
 
-### Example 1: Debugging Mobile Game API Calls
+Breakthru can intercept and decrypt HTTPS traffic by acting as a man-in-the-middle proxy. This requires installing a custom CA certificate.
 
-If you're trying to understand what API calls your mobile game makes:
-
-```bash
-# 1. Start breakthru on your computer
-./breakthru -verbose -port 8080 -log mobile-game.log
-
-# 2. Configure your phone's WiFi settings to use your computer as HTTP proxy:
-#    - Proxy Host: Your computer's IP (e.g., 192.168.1.100)
-#    - Proxy Port: 8080
-
-# 3. Install the breakthru CA certificate on your phone (once HTTPS interception is implemented)
-
-# 4. Launch your game and play normally
-# 5. Check the log file to see all HTTP/HTTPS traffic
-tail -f mobile-game.log
-```
-
-### Example 2: Analyzing PC Game Network Traffic
-
-For PC games that respect system proxy settings:
+### Quick Start with HTTPS Interception
 
 ```bash
-# Create a config file for the game
-cat > game-config.json << EOF
+# 1. Create a configuration file for HTTPS interception
+cat > https-config.json << EOF
 {
   "port": 8888,
   "log_file": "game-traffic.log",
   "verbose": true,
-  "target_hosts": ["api.gamestudio.com", "matchmaking.gamestudio.com"],
+  "https_interception": true,
+  "auto_generate_ca": true,
+  "cert_store_dir": "./certs",
+  "https_log_bodies": true,
+  "https_only_domains": ["api.gamestudio.com", "*.game-servers.com"],
+  "https_bypass_domains": ["banking.com", "*.financial.com"],
   "buffer_size": 65536
 }
 EOF
 
-# Start the proxy
-./breakthru -config game-config.json
+# 2. Start the proxy (will auto-generate CA certificate)
+./breakthru -config https-config.json
 
-# Configure system proxy (on macOS):
-# System Preferences > Network > Advanced > Proxies
-# HTTP Proxy: localhost:8888
-# HTTPS Proxy: localhost:8888
+# 3. Install the CA certificate in your system/browser
+# The CA certificate will be created at: ./certs/ca.crt
 
-# Or set environment variables:
-export HTTP_PROXY=http://localhost:8888
-export HTTPS_PROXY=http://localhost:8888
+# 4. Configure system proxy or browser to use localhost:8888
 
-# Launch your game
+# 5. Launch your game - HTTPS traffic will now be decrypted and logged
 ```
 
-### Example 3: Monitoring Specific Game Servers
+### Installing the CA Certificate
 
-To monitor traffic only to specific game servers:
+For HTTPS interception to work, you must install the generated CA certificate:
+
+**Windows:**
+```bash
+# Import the CA certificate into Windows certificate store
+certlm.msc
+# Navigate to Trusted Root Certification Authorities > Certificates
+# Right-click > All Tasks > Import > Select ./certs/ca.crt
+```
+
+**macOS:**
+```bash
+# Add to keychain and trust
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ./certs/ca.crt
+```
+
+**Linux (Firefox):**
+```bash
+# Firefox: Settings > Privacy & Security > Certificates > View Certificates > Authorities > Import
+# Select ./certs/ca.crt and check "Trust this CA to identify websites"
+```
+
+### Game Traffic Monitoring Example
 
 ```bash
-# Start with a configuration targeting specific hosts
-./breakthru -port 9090 -verbose \
-  -log game-traffic.log \
-  -config specific-hosts.json
+# Monitor API calls in real-time
+tail -f game-traffic.log | grep "api.gamestudio.com"
 
-# specific-hosts.json:
-{
-  "port": 9090,
-  "verbose": true,
-  "target_hosts": [
-    "gamedomain1.com",
-    "gamedomain2.com"
-  ],
-  "https_mode": true
-}
+# Extract all JSON responses
+grep "response_body" game-traffic.log | jq '.'
+
+# Find authentication requests
+grep -E "login|auth|token" game-traffic.log
 ```
 
-#### Configuring Windows 11 System Proxy:
+#### Configuring System Proxy:
 
+##### Automatic Configuration (Recommended):
+
+**Windows:**
+```bash
+# Enable Windows system proxy
+./breakthru.exe -enable -port 8080
+
+# Disable Windows system proxy when done
+./breakthru.exe -disable
+```
+
+**macOS:**
+```bash
+# Enable macOS system proxy (will prompt for network service selection)
+./breakthru -enable -port 8080
+
+# Disable macOS system proxy (will prompt for network service selection)
+./breakthru -disable
+```
+
+Note: On macOS, you'll be prompted to select which network service (Wi-Fi, Ethernet, etc.) to configure. Admin privileges (sudo) are required.
+
+##### Manual Configuration:
+
+**Windows (PowerShell as Administrator):**
 ```powershell
-# Set system-wide proxy (PowerShell as Administrator)
+# Set system-wide proxy
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyEnable -Value 1
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyServer -Value "127.0.0.1:8080"
 
@@ -176,26 +226,21 @@ Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet
 Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Settings" -Name ProxyEnable -Value 0
 ```
 
-### Example 5: Docker Container (Future)
-
-```dockerfile
-# Dockerfile
-FROM golang:1.22-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o breakthru ./cmd/breakthru
-
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-COPY --from=builder /app/breakthru /usr/local/bin/
-EXPOSE 8080
-CMD ["breakthru"]
-```
-
+**macOS (Terminal):**
 ```bash
-# Build and run
-docker build -t breakthru .
-docker run -p 8080:8080 -v $(pwd)/logs:/logs breakthru -log /logs/traffic.log
+# Enable proxy for Wi-Fi
+sudo networksetup -setwebproxy "Wi-Fi" 127.0.0.1 8080 off
+sudo networksetup -setwebproxystate "Wi-Fi" on
+sudo networksetup -setsecurewebproxy "Wi-Fi" 127.0.0.1 8080 off
+sudo networksetup -setsecurewebproxystate "Wi-Fi" on
+
+# Disable proxy for Wi-Fi
+sudo networksetup -setwebproxystate "Wi-Fi" off
+sudo networksetup -setsecurewebproxystate "Wi-Fi" off
+
+# Check proxy status
+networksetup -getwebproxy "Wi-Fi"
+networksetup -getsecurewebproxy "Wi-Fi"
 ```
 
 ### Reading the Logs
@@ -220,34 +265,6 @@ tail -f breakthru.log | grep "CONNECT"
 cat breakthru.log | grep "response_body" | jq '.'
 ```
 
-#### On Windows 11 (PowerShell):
-```powershell
-# View all HTTP requests
-Select-String -Pattern "HTTP request" -Path "breakthru.log"
-
-# Filter by specific host
-Select-String -Pattern "host=api.example.com" -Path "breakthru.log"
-
-# View only errors
-Select-String -Pattern "level=ERROR" -Path "breakthru.log"
-
-# Follow logs in real-time (PowerShell 3.0+)
-Get-Content -Path "breakthru.log" -Wait -Tail 10 | Where-Object { $_ -match "CONNECT" }
-
-# View last 50 lines
-Get-Content -Path "breakthru.log" -Tail 50
-
-# Search for specific error codes
-Select-String -Pattern "code=001" -Path "breakthru.log" -Context 2,2
-```
-
-### Tips for Game Traffic Analysis
-
-1. **Start Simple**: Begin with HTTP traffic before moving to HTTPS
-2. **Use Verbose Mode**: Enable `-verbose` to see all headers and details
-3. **Filter by Host**: Use the `target_hosts` config to reduce noise
-4. **Timestamp Analysis**: Look for patterns in request timing
-5. **Save Different Sessions**: Use different log files for different games or sessions
 
 ## Development
 
@@ -305,26 +322,32 @@ Enable verbose logging with `-verbose` flag to see detailed debug information.
 
 ## Current Status
 
-This is an early development version. Currently implemented:
-- Basic project structure
-- Configuration management
-- Logging infrastructure
-- HTTP proxy server skeleton
+**✅ Production Ready Features:**
+- ✅ **HTTP/HTTPS Proxy**: Complete proxy server with connection pooling and keep-alive support
+- ✅ **HTTPS Interception**: Full man-in-the-middle HTTPS proxy with dynamic certificate generation
+- ✅ **Certificate Management**: Automatic CA generation, certificate signing, and cleanup
+- ✅ **TLS SNI Extraction**: Server Name Indication parsing from TLS handshakes
+- ✅ **WebSocket Support**: Complete WebSocket upgrade handling and frame inspection
+- ✅ **Transparent Mode**: OS-level traffic interception for capturing ALL network traffic
+- ✅ **Configuration System**: Comprehensive JSON configuration with domain filtering
+- ✅ **Logging Infrastructure**: Structured logging with error codes and comprehensive test coverage
+
+**🔧 Advanced Configuration Options:**
+- Domain-based HTTPS interception filtering (whitelist/blacklist)
+- Configurable certificate validity and key sizes
+- Request/response body logging with size limits
+- Certificate cleanup and management
+- Transparent proxy port filtering
 
 ## Roadmap
 
-- [ ] HTTPS interception with certificate generation
-- [ ] HTTP request/response forwarding
-- [ ] WebSocket support
-- [ ] OS-level traffic routing
-- [ ] Certificate management utilities
-- [ ] Web UI for traffic inspection
-- [ ] Request/response modification
-- [ ] Traffic filtering and search
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+- [ ] Web UI for traffic inspection and analysis
+- [ ] Request/response modification and replay
+- [ ] Traffic filtering and search capabilities
+- [ ] Plugin system for custom traffic analysis
+- [ ] Performance optimizations for high-traffic scenarios
+- [ ] Mobile device support and configuration
+- [ ] Integration with popular reverse engineering tools
 
 ## License
 

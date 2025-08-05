@@ -8,5 +8,22 @@
   "ca_cert": "",
   "ca_key": "",
   "target_hosts": [],
-  "buffer_size": 32768
+  "buffer_size": 32768,
+  "transparent_mode": false,
+  "intercept_ports": [80, 443],
+  "exclude_ports": [22, 53],
+  
+  "cert_store_dir": "./certs",
+  "auto_generate_ca": true,
+  "cert_validity_days": 365,
+  "cert_key_size": 2048,
+  "cert_cleanup_enabled": true,
+  
+  "https_interception": true,
+  "https_transparent": true,
+  "https_skip_verify": false,
+  "https_bypass_domains": ["example.com", "*.internal.com"],
+  "https_only_domains": [],
+  "https_log_bodies": true,
+  "https_max_body_size": 1048576
 }

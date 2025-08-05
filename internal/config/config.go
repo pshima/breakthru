@@ -8,25 +8,58 @@ import (
 
 // Config holds all application configuration
 type Config struct {
-	Port        int                `json:"port"`
-	CertFile    string             `json:"cert_file"`
-	KeyFile     string             `json:"key_file"`
-	LogFile     string             `json:"log_file"`
-	Verbose     bool               `json:"verbose"`
-	HTTPSMode   bool               `json:"https_mode"`
-	CACert      string             `json:"ca_cert"`
-	CAKey       string             `json:"ca_key"`
-	TargetHosts []string           `json:"target_hosts"`
-	BufferSize  int                `json:"buffer_size"`
+	Port            int      `json:"port"`
+	CertFile        string   `json:"cert_file"`
+	KeyFile         string   `json:"key_file"`
+	LogFile         string   `json:"log_file"`
+	Verbose         bool     `json:"verbose"`
+	HTTPSMode       bool     `json:"https_mode"`
+	CACert          string   `json:"ca_cert"`
+	CAKey           string   `json:"ca_key"`
+	TargetHosts     []string `json:"target_hosts"`
+	BufferSize      int      `json:"buffer_size"`
+	TransparentMode bool     `json:"transparent_mode"`
+	InterceptPorts  []int    `json:"intercept_ports"`
+	ExcludePorts    []int    `json:"exclude_ports"`
+	
+	// Certificate management settings
+	CertStoreDir       string `json:"cert_store_dir"`       // Directory to store generated certificates
+	AutoGenerateCA     bool   `json:"auto_generate_ca"`     // Auto-generate CA if none provided
+	CertValidityDays   int    `json:"cert_validity_days"`   // Days certificates are valid for
+	CertKeySize        int    `json:"cert_key_size"`        // RSA key size for generated certificates
+	CertCleanupEnabled bool   `json:"cert_cleanup_enabled"` // Enable automatic cleanup of expired certificates
+	
+	// HTTPS interception settings
+	HTTPSInterception      bool     `json:"https_interception"`        // Enable HTTPS interception and decryption
+	HTTPSTransparent       bool     `json:"https_transparent"`         // Enable transparent HTTPS interception
+	HTTPSSkipVerify        bool     `json:"https_skip_verify"`         // Skip server certificate verification
+	HTTPSBypassDomains     []string `json:"https_bypass_domains"`      // Domains to bypass HTTPS interception
+	HTTPSOnlyDomains       []string `json:"https_only_domains"`        // Only intercept these domains (if specified)
+	HTTPSLogBodies         bool     `json:"https_log_bodies"`          // Log request/response bodies for HTTPS
+	HTTPSMaxBodySize       int      `json:"https_max_body_size"`       // Maximum body size to log (bytes)
 }
 
 // CLIOptions represents command-line options
 type CLIOptions struct {
-	Port     int
-	CertFile string
-	KeyFile  string
-	LogFile  string
-	Verbose  bool
+	Port            int
+	CertFile        string
+	KeyFile         string
+	LogFile         string
+	Verbose         bool
+	Enable          bool
+	Disable         bool
+	TransparentMode bool
+	
+	// Certificate management CLI options
+	GenerateCA    bool
+	CertInfo      string
+	InstallCA     string
+	UninstallCA   string
+	ListCerts     bool
+	CleanupCerts  bool
+	GenCert       []string
+	ValidateCert  string
+	ValidateHost  string
 }
 
 // DefaultConfig returns a default configuration
@@ -37,6 +70,20 @@ func DefaultConfig() *Config {
 		HTTPSMode:  false, // Default to HTTP mode since no certs are provided
 		BufferSize: 32 * 1024, // 32KB default buffer
 		Verbose:    false,
+		
+		// Certificate management defaults
+		CertStoreDir:       "./certs",
+		AutoGenerateCA:     true,
+		CertValidityDays:   365,
+		CertKeySize:        2048,
+		CertCleanupEnabled: true,
+		
+		// HTTPS interception defaults
+		HTTPSInterception:  true,
+		HTTPSTransparent:   true,
+		HTTPSSkipVerify:    false,
+		HTTPSLogBodies:     true,
+		HTTPSMaxBodySize:   1024 * 1024, // 1MB
 	}
 }
 
@@ -72,6 +119,9 @@ func Load(configFile string, cliOpts CLIOptions) (*Config, error) {
 	if cliOpts.Verbose {
 		cfg.Verbose = cliOpts.Verbose
 	}
+	if cliOpts.TransparentMode {
+		cfg.TransparentMode = cliOpts.TransparentMode
+	}
 
 	// Validate configuration
 	if err := cfg.Validate(); err != nil {
@@ -102,6 +152,28 @@ func (c *Config) Validate() error {
 
 	if c.BufferSize < 1024 {
 		return fmt.Errorf("buffer_size must be at least 1024 bytes")
+	}
+
+	// Validate certificate settings
+	if c.CertValidityDays < 1 {
+		return fmt.Errorf("cert_validity_days must be at least 1")
+	}
+
+	if c.CertKeySize < 1024 {
+		return fmt.Errorf("cert_key_size must be at least 1024")
+	}
+
+	if c.CertStoreDir == "" {
+		return fmt.Errorf("cert_store_dir cannot be empty")
+	}
+
+	// Validate HTTPS interception settings
+	if c.HTTPSMaxBodySize < 0 {
+		return fmt.Errorf("https_max_body_size cannot be negative")
+	}
+
+	if c.HTTPSInterception && !c.AutoGenerateCA && c.CACert == "" {
+		return fmt.Errorf("HTTPS interception requires CA certificate or auto-generation enabled")
 	}
 
 	return nil

@@ -22,6 +22,10 @@
 
 ## Best Practices
 
+### General
+- This application will not use docker, never try and create any docker configuration or include any docker documentation
+- This appliaction will never run as a service, do not include any documentation about how to run it as a service
+
 ### Error Handling and Debugging
 - Debugging is a critical part of software development, always create the necessary basic debugging abilities
 - Logging should be enabled in the beginning of development and use clear and concise error codes.
@@ -30,7 +34,7 @@
 - When developing a front end, create a debuggable admin page in unison with the product.  Do not create a mess of code from admin and product pages, keep them separate with shared re-usable components or libraries.
 
 ### API Development
-- Always update the OpenAPI documentation when changing endpoints
+- No need to add OpenAPI documentation for this app, as it has no APIs
 - Use appropriate HTTP status codes and error messages
 - Validate all input parameters before processing
 - Return consistent response formats

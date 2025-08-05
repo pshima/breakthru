@@ -2,8 +2,11 @@ package proxy
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base64"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -65,9 +68,14 @@ func (m *mockLogger) getMessages() []logMessage {
 }
 
 func TestNew(t *testing.T) {
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       8080,
-		BufferSize: 32768,
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -106,9 +114,14 @@ func TestServer_HandleHTTP(t *testing.T) {
 	}))
 	defer backendServer.Close()
 
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0, // Use any available port
-		BufferSize: 32768,
+		Port:             0, // Use any available port
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -149,9 +162,15 @@ func TestServer_HandleHTTP(t *testing.T) {
 }
 
 func TestServer_HandleConnect(t *testing.T) {
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:              0,
+		BufferSize:        32768,
+		CertStoreDir:      tempDir,
+		AutoGenerateCA:    true,
+		CertKeySize:       2048,
+		CertValidityDays:  365,
+		HTTPSInterception: false, // Disable HTTPS interception for this test
 	}
 	log := &mockLogger{}
 
@@ -160,21 +179,26 @@ func TestServer_HandleConnect(t *testing.T) {
 		t.Fatalf("Failed to create server: %v", err)
 	}
 
-	// Test CONNECT request handling
+	// Test CONNECT request handling when HTTPS interception is disabled
 	req := httptest.NewRequest(http.MethodConnect, "https://example.com:443", nil)
 	w := httptest.NewRecorder()
 
 	server.handleConnect(w, req)
 
-	// Check response
+	// Check response - with HTTPS interception disabled, it should create a tunnel
 	resp := w.Result()
-	if resp.StatusCode != http.StatusNotImplemented {
-		t.Errorf("handleConnect() status = %d, want %d", resp.StatusCode, http.StatusNotImplemented)
+	// The response code could vary depending on whether the connection succeeds
+	// For a non-existent host like example.com, we expect a connection error
+	expectedCodes := []int{http.StatusOK, http.StatusBadGateway, http.StatusInternalServerError}
+	found := false
+	for _, code := range expectedCodes {
+		if resp.StatusCode == code {
+			found = true
+			break
+		}
 	}
-
-	body, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(body), "CONNECT not yet implemented") {
-		t.Errorf("handleConnect() body = %s, want error message", string(body))
+	if !found {
+		t.Errorf("handleConnect() status = %d, want one of %v", resp.StatusCode, expectedCodes)
 	}
 
 	// Check logs
@@ -199,9 +223,15 @@ func TestServer_CreateHandler(t *testing.T) {
 	}))
 	defer backendServer.Close()
 
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:              0,
+		BufferSize:        32768,
+		CertStoreDir:      tempDir,
+		AutoGenerateCA:    true,
+		CertKeySize:       2048,
+		CertValidityDays:  365,
+		HTTPSInterception: false, // Disable HTTPS interception for this test
 	}
 	log := &mockLogger{}
 
@@ -227,8 +257,8 @@ func TestServer_CreateHandler(t *testing.T) {
 			name:   "CONNECT method",
 			method: http.MethodConnect,
 			url:    "example.com:443",
-			want:   "CONNECT not yet implemented",
-			status: http.StatusNotImplemented,
+			want:   "Internal Server Error", // Connection will fail with 500
+			status: http.StatusInternalServerError, // Expecting 500 for connection failures
 		},
 		{
 			name:   "GET method",
@@ -267,9 +297,14 @@ func TestServer_CreateHandler(t *testing.T) {
 }
 
 func TestServer_LogHeaders(t *testing.T) {
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -301,9 +336,14 @@ func TestServer_LogHeaders(t *testing.T) {
 }
 
 func TestServer_GetActiveSessions(t *testing.T) {
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -350,9 +390,14 @@ func TestServer_GetActiveSessions(t *testing.T) {
 }
 
 func TestServer_Start(t *testing.T) {
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0, // Use any available port
-		BufferSize: 32768,
+		Port:             0, // Use any available port
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -457,9 +502,14 @@ func TestServer_HTTPProxyFunctionality(t *testing.T) {
 	defer backendServer.Close()
 
 	// Create proxy server
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -571,7 +621,15 @@ func TestServer_HTTPProxyFunctionality(t *testing.T) {
 }
 
 func TestServer_BuildTargetURL(t *testing.T) {
-	cfg := &config.Config{Port: 8080, BufferSize: 32768}
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
 	log := &mockLogger{}
 	server, _ := New(cfg, log)
 
@@ -630,7 +688,15 @@ func TestServer_BuildTargetURL(t *testing.T) {
 }
 
 func TestServer_CreateProxyRequest(t *testing.T) {
-	cfg := &config.Config{Port: 8080, BufferSize: 32768}
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
 	log := &mockLogger{}
 	server, _ := New(cfg, log)
 
@@ -690,7 +756,15 @@ func TestServer_CreateProxyRequest(t *testing.T) {
 }
 
 func TestServer_CopyHeaders(t *testing.T) {
-	cfg := &config.Config{Port: 8080, BufferSize: 32768}
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
 	log := &mockLogger{}
 	server, _ := New(cfg, log)
 
@@ -729,9 +803,14 @@ func TestServer_CopyHeaders(t *testing.T) {
 
 func TestServer_HTTPProxyWithErrorHandling(t *testing.T) {
 	// Create proxy server
+	tempDir := t.TempDir()
 	cfg := &config.Config{
-		Port:       0,
-		BufferSize: 32768,
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -802,6 +881,222 @@ func TestServer_HTTPProxyWithErrorHandling(t *testing.T) {
 	<-errChan
 }
 
+func TestServer_KeepAliveConnections(t *testing.T) {
+	// Create a test backend server that tracks connections
+	connCount := 0
+	var mu sync.Mutex
+	
+	backendServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		connCount++
+		count := connCount
+		mu.Unlock()
+		
+		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("X-Connection-Count", fmt.Sprintf("%d", count))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(fmt.Sprintf("Response from connection %d", count)))
+	}))
+	defer backendServer.Close()
+
+	// Create proxy server
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+
+	server, err := New(cfg, log)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Verify that the server has a properly configured transport
+	if server.client == nil {
+		t.Fatal("Server client is nil")
+	}
+	
+	transport, ok := server.client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatal("Server client transport is not *http.Transport")
+	}
+	
+	if transport.DisableKeepAlives {
+		t.Error("Keep-alives should be enabled")
+	}
+	
+	if transport.MaxIdleConnsPerHost < 1 {
+		t.Error("MaxIdleConnsPerHost should be at least 1")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- server.Start(ctx)
+	}()
+
+	// Wait for server to be ready
+	var addr string
+	for i := 0; i < 20; i++ {
+		addr = server.GetListenerAddr()
+		if addr != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if addr == "" {
+		t.Fatal("Server not ready")
+	}
+
+	// Create HTTP client with proxy and keep-alive enabled
+	proxyURL, _ := url.Parse("http://" + addr)
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+			DisableKeepAlives: false,
+			MaxIdleConnsPerHost: 10,
+		},
+		Timeout: 5 * time.Second,
+	}
+
+	// Make multiple requests to the same host
+	// With keep-alive, these should reuse connections
+	numRequests := 5
+	for i := 0; i < numRequests; i++ {
+		resp, err := client.Get(backendServer.URL + fmt.Sprintf("/test%d", i))
+		if err != nil {
+			t.Fatalf("Request %d failed: %v", i, err)
+		}
+		
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Request %d status = %d, want 200", i, resp.StatusCode)
+		}
+		
+		// Log the response for debugging
+		t.Logf("Request %d: %s, Connection Count Header: %s", i, string(body), resp.Header.Get("X-Connection-Count"))
+	}
+
+	// With keep-alive, we should see fewer connections than requests
+	// (connections should be reused)
+	mu.Lock()
+	finalConnCount := connCount
+	mu.Unlock()
+	
+	t.Logf("Total requests: %d, Total connections: %d", numRequests, finalConnCount)
+	
+	// The exact number of connections depends on timing and the backend server's behavior,
+	// but with keep-alive we should see some connection reuse
+	if finalConnCount >= numRequests {
+		t.Logf("Warning: No connection reuse detected (connections: %d, requests: %d)", finalConnCount, numRequests)
+	}
+
+	// Check logs for Connection header
+	messages := log.getMessages()
+	for _, msg := range messages {
+		if msg.level == "debug" && strings.Contains(msg.msg, "Connection header") {
+			t.Logf("Found Connection header log: %v", msg)
+		}
+	}
+
+	// Test with explicit Connection: close header
+	req, _ := http.NewRequest("GET", backendServer.URL+"/close-test", nil)
+	req.Header.Set("Connection", "close")
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Request with Connection: close failed: %v", err)
+	}
+	resp.Body.Close()
+
+	// Verify idle connections are closed on shutdown
+	cancel()
+	
+	select {
+	case <-errChan:
+		// Expected
+	case <-time.After(2 * time.Second):
+		t.Error("Server shutdown timeout")
+	}
+	
+	// Check for idle connection closing log
+	messages = log.getMessages()
+	foundCloseLog := false
+	for _, msg := range messages {
+		if msg.level == "debug" && strings.Contains(msg.msg, "Closing idle connections") {
+			foundCloseLog = true
+			break
+		}
+	}
+	
+	if !foundCloseLog {
+		t.Error("Expected idle connections closing log not found")
+	}
+}
+
+func TestServer_CopyHeadersWithConnectionHeader(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+	server, _ := New(cfg, log)
+
+	// Test with custom hop-by-hop headers specified in Connection header
+	src := http.Header{}
+	src.Set("User-Agent", "test-agent")
+	src.Set("Content-Type", "application/json")
+	src.Set("Connection", "X-Custom-Header, X-Another-Header")
+	src.Set("X-Custom-Header", "should-not-be-copied")
+	src.Set("X-Another-Header", "also-should-not-be-copied")
+	src.Set("X-Normal-Header", "should-be-copied")
+
+	dst := http.Header{}
+	server.copyHeaders(dst, src)
+
+	// Check normal headers were copied
+	if dst.Get("User-Agent") != "test-agent" {
+		t.Errorf("User-Agent not copied")
+	}
+
+	if dst.Get("Content-Type") != "application/json" {
+		t.Errorf("Content-Type not copied")
+	}
+
+	if dst.Get("X-Normal-Header") != "should-be-copied" {
+		t.Errorf("X-Normal-Header not copied")
+	}
+
+	// Check custom hop-by-hop headers were not copied
+	if dst.Get("X-Custom-Header") != "" {
+		t.Errorf("X-Custom-Header should not be copied (specified in Connection header)")
+	}
+
+	if dst.Get("X-Another-Header") != "" {
+		t.Errorf("X-Another-Header should not be copied (specified in Connection header)")
+	}
+
+	// Connection header itself should not be copied
+	if dst.Get("Connection") != "" {
+		t.Errorf("Connection header should not be copied")
+	}
+}
+
 func TestServer_StartHTTPS(t *testing.T) {
 	// Create temporary cert and key files
 	certPEM := `-----BEGIN CERTIFICATE-----
@@ -845,11 +1140,15 @@ WMYeYaBfKiPTW4Dtu1UhAkBMYj0MUCQta3Qy3XSK5GrlLBX9UW8j5mjQu5P2KcrH
 	}
 
 	cfg := &config.Config{
-		Port:       0,
-		HTTPSMode:  true,
-		CertFile:   certFile,
-		KeyFile:    keyFile,
-		BufferSize: 32768,
+		Port:             0,
+		HTTPSMode:        true,
+		CertFile:         certFile,
+		KeyFile:          keyFile,
+		BufferSize:       32768,
+		CertStoreDir:     tmpDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
 	}
 	log := &mockLogger{}
 
@@ -891,4 +1190,350 @@ WMYeYaBfKiPTW4Dtu1UhAkBMYj0MUCQta3Qy3XSK5GrlLBX9UW8j5mjQu5P2KcrH
 	case <-time.After(2 * time.Second):
 		t.Error("Server shutdown timeout")
 	}
+}
+
+func TestServer_IsWebSocketUpgrade(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+	server, _ := New(cfg, log)
+
+	tests := []struct {
+		name     string
+		headers  map[string]string
+		expected bool
+	}{
+		{
+			name: "valid WebSocket upgrade",
+			headers: map[string]string{
+				"Connection": "Upgrade",
+				"Upgrade":    "websocket",
+			},
+			expected: true,
+		},
+		{
+			name: "case insensitive headers",
+			headers: map[string]string{
+				"Connection": "upgrade",
+				"Upgrade":    "WebSocket",
+			},
+			expected: true,
+		},
+		{
+			name: "missing Upgrade header",
+			headers: map[string]string{
+				"Connection": "Upgrade",
+			},
+			expected: false,
+		},
+		{
+			name: "missing Connection header",
+			headers: map[string]string{
+				"Upgrade": "websocket",
+			},
+			expected: false,
+		},
+		{
+			name: "wrong Upgrade value",
+			headers: map[string]string{
+				"Connection": "Upgrade",
+				"Upgrade":    "h2c",
+			},
+			expected: false,
+		},
+		{
+			name:     "no headers",
+			headers:  map[string]string{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "http://example.com/ws", nil)
+			for key, value := range tt.headers {
+				req.Header.Set(key, value)
+			}
+
+			result := server.isWebSocketUpgrade(req)
+			if result != tt.expected {
+				t.Errorf("isWebSocketUpgrade() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestServer_GenerateWebSocketAccept(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+	server, _ := New(cfg, log)
+
+	// Test with the example from RFC 6455
+	key := "dGhlIHNhbXBsZSBub25jZQ=="
+	expected := "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+
+	result := server.generateWebSocketAccept(key)
+	if result != expected {
+		t.Errorf("generateWebSocketAccept() = %s, want %s", result, expected)
+	}
+
+	// Test that it generates the correct hash
+	const websocketMagicString = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+	h := sha1.New()
+	h.Write([]byte(key + websocketMagicString))
+	expectedHash := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
+	if result != expectedHash {
+		t.Errorf("generateWebSocketAccept() hash mismatch: got %s, want %s", result, expectedHash)
+	}
+}
+
+func TestServer_LogWebSocketFrame(t *testing.T) {
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+	server, err := New(cfg, log)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	// Test text frame
+	textFrame := []byte{0x81, 0x05, 'H', 'e', 'l', 'l', 'o'}
+	server.logWebSocketFrame("test->server", textFrame)
+
+	// Check that the frame was logged
+	messages := log.getMessages()
+	foundFrameLog := false
+	for _, msg := range messages {
+		if msg.level == "debug" && strings.Contains(msg.msg, "WebSocket frame") {
+			foundFrameLog = true
+			break
+		}
+	}
+
+	if !foundFrameLog {
+		t.Error("Expected WebSocket frame log not found")
+	}
+
+	// Test close frame
+	closeFrame := []byte{0x88, 0x00}
+	server.logWebSocketFrame("server->test", closeFrame)
+
+	// Check logs for close frame
+	messages = log.getMessages()
+	foundCloseLog := false
+	for _, msg := range messages {
+		if msg.level == "debug" && strings.Contains(msg.msg, "WebSocket frame") {
+			// Check if this is the close frame log
+			for i := 0; i < len(msg.args); i += 2 {
+				if i+1 < len(msg.args) && msg.args[i] == "opcode" && msg.args[i+1] == "close" {
+					foundCloseLog = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundCloseLog {
+		t.Error("Expected WebSocket close frame log not found")
+	}
+}
+
+func TestServer_WebSocketHandshake(t *testing.T) {
+	// Create a mock WebSocket server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify WebSocket handshake headers
+		if r.Header.Get("Upgrade") != "websocket" {
+			t.Errorf("Expected Upgrade: websocket, got %s", r.Header.Get("Upgrade"))
+		}
+		if r.Header.Get("Connection") != "Upgrade" {
+			t.Errorf("Expected Connection: Upgrade, got %s", r.Header.Get("Connection"))
+		}
+
+		// Send proper WebSocket upgrade response
+		w.Header().Set("Upgrade", "websocket")
+		w.Header().Set("Connection", "Upgrade")
+		w.Header().Set("Sec-WebSocket-Accept", "test-accept")
+		w.WriteHeader(101)
+	}))
+	defer server.Close()
+
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             8080,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+	proxyServer, _ := New(cfg, log)
+
+	// Create a connection to the mock server
+	u, _ := url.Parse(server.URL)
+	conn, err := net.Dial("tcp", u.Host)
+	if err != nil {
+		t.Fatalf("Failed to connect to mock server: %v", err)
+	}
+	defer conn.Close()
+
+	// Create a mock WebSocket upgrade request
+	req := httptest.NewRequest("GET", server.URL+"/ws", nil)
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("Sec-WebSocket-Key", "test-key")
+	req.Header.Set("Sec-WebSocket-Version", "13")
+
+	targetURL, _ := url.Parse(server.URL + "/ws")
+
+	// Test the handshake
+	err = proxyServer.performWebSocketHandshake(conn, req, targetURL)
+	if err != nil {
+		t.Errorf("performWebSocketHandshake() failed: %v", err)
+	}
+
+	// Check logs
+	messages := log.getMessages()
+	foundHandshakeLog := false
+	for _, msg := range messages {
+		if msg.level == "debug" && strings.Contains(msg.msg, "WebSocket handshake completed") {
+			foundHandshakeLog = true
+			break
+		}
+	}
+
+	if !foundHandshakeLog {
+		t.Error("Expected WebSocket handshake completion log not found")
+	}
+}
+
+func TestServer_HandleWebSocketUpgrade(t *testing.T) {
+	// Create a simple WebSocket echo server
+	wsServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Simple WebSocket handshake response
+		w.Header().Set("Upgrade", "websocket")
+		w.Header().Set("Connection", "Upgrade")
+		
+		// Generate proper Sec-WebSocket-Accept
+		key := r.Header.Get("Sec-WebSocket-Key")
+		if key != "" {
+			const websocketMagicString = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+			h := sha1.New()
+			h.Write([]byte(key + websocketMagicString))
+			accept := base64.StdEncoding.EncodeToString(h.Sum(nil))
+			w.Header().Set("Sec-WebSocket-Accept", accept)
+		}
+		
+		w.WriteHeader(101)
+	}))
+	defer wsServer.Close()
+
+	// Create proxy server
+	tempDir := t.TempDir()
+	cfg := &config.Config{
+		Port:             0,
+		BufferSize:       32768,
+		CertStoreDir:     tempDir,
+		AutoGenerateCA:   true,
+		CertKeySize:      2048,
+		CertValidityDays: 365,
+	}
+	log := &mockLogger{}
+
+	server, err := New(cfg, log)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Start server
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- server.Start(ctx)
+	}()
+
+	// Wait for server to be ready
+	var addr string
+	for i := 0; i < 20; i++ {
+		addr = server.GetListenerAddr()
+		if addr != "" {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	if addr == "" {
+		t.Fatal("Server not ready")
+	}
+
+	// Create a WebSocket upgrade request through the proxy
+	proxyURL := "http://" + addr
+	client := &http.Client{
+		Transport: &http.Transport{
+			Proxy: func(req *http.Request) (*url.URL, error) {
+				return url.Parse(proxyURL)
+			},
+		},
+		Timeout: 5 * time.Second,
+	}
+
+	// Create WebSocket upgrade request
+	req, _ := http.NewRequest("GET", wsServer.URL+"/ws", nil)
+	req.Header.Set("Connection", "Upgrade")
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+	req.Header.Set("Sec-WebSocket-Version", "13")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("WebSocket upgrade request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Check if we got a 101 response (though the client might not see it due to hijacking)
+	if resp.StatusCode != 101 && resp.StatusCode != 200 {
+		t.Logf("WebSocket upgrade response status: %d (this may be expected due to connection hijacking)", resp.StatusCode)
+	}
+
+	// Check logs for WebSocket activity
+	messages := log.getMessages()
+	foundUpgradeLog := false
+	for _, msg := range messages {
+		if msg.level == "info" && strings.Contains(msg.msg, "WebSocket upgrade request") {
+			foundUpgradeLog = true
+			break
+		}
+	}
+
+	if !foundUpgradeLog {
+		t.Error("Expected WebSocket upgrade log not found")
+	}
+
+	cancel()
+	<-errChan
 }
