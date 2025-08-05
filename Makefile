@@ -33,7 +33,7 @@ help: ## Show this help message
 all: clean test build ## Clean, test, and build for all platforms
 
 .PHONY: build
-build: build-darwin-amd64 build-darwin-arm64 build-windows-amd64 build-windows-arm64 build-linux-amd64 build-linux-arm64 ## Build for all platforms
+build: build-darwin-amd64 build-darwin-arm64 build-windows-amd64 build-windows-arm64 ## Build for all platforms
 
 .PHONY: build-darwin-amd64
 build-darwin-amd64: ## Build for macOS (Intel)
@@ -58,18 +58,6 @@ build-windows-arm64: ## Build for Windows (ARM64)
 	@echo "Building for Windows ARM64..."
 	@mkdir -p $(BIN_DIR)
 	GOOS=windows GOARCH=arm64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(APP_NAME)-windows-arm64.exe ./cmd/$(APP_NAME)
-
-.PHONY: build-linux-amd64
-build-linux-amd64: ## Build for Linux (x64)
-	@echo "Building for Linux AMD64..."
-	@mkdir -p $(BIN_DIR)
-	GOOS=linux GOARCH=amd64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(APP_NAME)-linux-amd64 ./cmd/$(APP_NAME)
-
-.PHONY: build-linux-arm64
-build-linux-arm64: ## Build for Linux (ARM64)
-	@echo "Building for Linux ARM64..."
-	@mkdir -p $(BIN_DIR)
-	GOOS=linux GOARCH=arm64 $(GOBUILD) -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/$(APP_NAME)-linux-arm64 ./cmd/$(APP_NAME)
 
 .PHONY: build-local
 build-local: ## Build for local architecture
