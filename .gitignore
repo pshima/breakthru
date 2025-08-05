@@ -85,3 +85,7 @@ docs/.jekyll-cache/
 
 # Memory profiles
 *.mprof
+
+https-config.json
+fungame2-config.json
+monitor-fungame2.sh
