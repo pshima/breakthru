@@ -17,6 +17,8 @@ func TestCertificateStore_GetCertificate(t *testing.T) {
 	// Setup CA and generator
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 
@@ -62,6 +64,8 @@ func TestCertificateStore_GetWildcardCertificate(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 
@@ -95,6 +99,8 @@ func TestCertificateStore_PreloadCertificates(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 
 	// Create first store and generate some certificates
@@ -146,6 +152,8 @@ func TestCertificateStore_CleanupExpired(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Set very short validity period to create expired certificates
 	generator.SetValidityPeriod(0) // This should create immediately expired certs
@@ -192,6 +200,8 @@ func TestCertificateStore_GetCacheStats(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 
@@ -224,6 +234,8 @@ func TestCertificateStore_ListCertificates(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 
@@ -276,6 +288,8 @@ func TestCertificateStore_FilenameSafe(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 
@@ -313,6 +327,8 @@ func TestCertificateStore_HostWithPort(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 	storeDir := filepath.Join(tempDir, "certs")
 	store := NewCertificateStore(storeDir, generator)
 

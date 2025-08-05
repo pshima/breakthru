@@ -38,39 +38,51 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "valid HTTP config",
 			config: &Config{
-				Port:       8080,
-				HTTPSMode:  false,
-				BufferSize: 4096,
+				Port:            8080,
+				HTTPSMode:       false,
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid HTTPS config with user certs",
 			config: &Config{
-				Port:       8443,
-				HTTPSMode:  true,
-				CertFile:   "cert.pem",
-				KeyFile:    "key.pem",
-				BufferSize: 4096,
+				Port:            8443,
+				HTTPSMode:       true,
+				CertFile:        "cert.pem",
+				KeyFile:         "key.pem",
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: false,
 		},
 		{
 			name: "valid HTTPS config with CA certs",
 			config: &Config{
-				Port:       8443,
-				HTTPSMode:  true,
-				CACert:     "ca-cert.pem",
-				CAKey:      "ca-key.pem",
-				BufferSize: 4096,
+				Port:            8443,
+				HTTPSMode:       true,
+				CACert:          "ca-cert.pem",
+				CAKey:           "ca-key.pem",
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid port too low",
 			config: &Config{
-				Port:       0,
-				BufferSize: 4096,
+				Port:            0,
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "invalid port number",
@@ -78,8 +90,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "invalid port too high",
 			config: &Config{
-				Port:       70000,
-				BufferSize: 4096,
+				Port:            70000,
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "invalid port number",
@@ -87,9 +102,12 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "HTTPS mode without certs",
 			config: &Config{
-				Port:       8443,
-				HTTPSMode:  true,
-				BufferSize: 4096,
+				Port:            8443,
+				HTTPSMode:       true,
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "HTTPS mode requires either cert_file or ca_cert",
@@ -97,10 +115,13 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "cert file without key file",
 			config: &Config{
-				Port:       8443,
-				HTTPSMode:  true,
-				CertFile:   "cert.pem",
-				BufferSize: 4096,
+				Port:            8443,
+				HTTPSMode:       true,
+				CertFile:        "cert.pem",
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "cert_file requires key_file",
@@ -108,10 +129,13 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "CA cert without CA key",
 			config: &Config{
-				Port:       8443,
-				HTTPSMode:  true,
-				CACert:     "ca-cert.pem",
-				BufferSize: 4096,
+				Port:            8443,
+				HTTPSMode:       true,
+				CACert:          "ca-cert.pem",
+				BufferSize:      4096,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "ca_cert requires ca_key",
@@ -119,8 +143,11 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "buffer size too small",
 			config: &Config{
-				Port:       8080,
-				BufferSize: 512,
+				Port:            8080,
+				BufferSize:      512,
+				CertValidityDays: 365,
+				CertKeySize:     2048,
+				CertStoreDir:    "./certs",
 			},
 			wantErr: true,
 			errMsg:  "buffer_size must be at least 1024 bytes",
@@ -146,14 +173,17 @@ func TestLoad_FromFile(t *testing.T) {
 	configFile := filepath.Join(tmpDir, "test-config.json")
 	
 	testConfig := &Config{
-		Port:        9090,
-		CertFile:    "/path/to/cert.pem",
-		KeyFile:     "/path/to/key.pem",
-		LogFile:     "custom.log",
-		Verbose:     true,
-		HTTPSMode:   true,
-		BufferSize:  65536,
-		TargetHosts: []string{"api.example.com", "game.example.com"},
+		Port:            9090,
+		CertFile:        "/path/to/cert.pem",
+		KeyFile:         "/path/to/key.pem",
+		LogFile:         "custom.log",
+		Verbose:         true,
+		HTTPSMode:       true,
+		BufferSize:      65536,
+		TargetHosts:     []string{"api.example.com", "game.example.com"},
+		CertValidityDays: 365,
+		CertKeySize:     2048,
+		CertStoreDir:    "./certs",
 	}
 	
 	data, err := json.MarshalIndent(testConfig, "", "  ")
@@ -191,11 +221,14 @@ func TestLoad_CLIOverride(t *testing.T) {
 	configFile := filepath.Join(tmpDir, "test-config.json")
 	
 	fileConfig := &Config{
-		Port:       8080,
-		LogFile:    "file.log",
-		Verbose:    false,
-		HTTPSMode:  false,
-		BufferSize: 32768,
+		Port:            8080,
+		LogFile:         "file.log",
+		Verbose:         false,
+		HTTPSMode:       false,
+		BufferSize:      32768,
+		CertValidityDays: 365,
+		CertKeySize:     2048,
+		CertStoreDir:    "./certs",
 	}
 	
 	data, err := json.MarshalIndent(fileConfig, "", "  ")
@@ -296,16 +329,19 @@ func TestConfig_Save(t *testing.T) {
 	saveFile := filepath.Join(tmpDir, "save-test.json")
 	
 	cfg := &Config{
-		Port:        8443,
-		CertFile:    "test-cert.pem",
-		KeyFile:     "test-key.pem",
-		LogFile:     "test.log",
-		Verbose:     true,
-		HTTPSMode:   true,
-		CACert:      "ca-cert.pem",
-		CAKey:       "ca-key.pem",
-		TargetHosts: []string{"host1.com", "host2.com"},
-		BufferSize:  65536,
+		Port:            8443,
+		CertFile:        "test-cert.pem",
+		KeyFile:         "test-key.pem",
+		LogFile:         "test.log",
+		Verbose:         true,
+		HTTPSMode:       true,
+		CACert:          "ca-cert.pem",
+		CAKey:           "ca-key.pem",
+		TargetHosts:     []string{"host1.com", "host2.com"},
+		BufferSize:      65536,
+		CertValidityDays: 365,
+		CertKeySize:     2048,
+		CertStoreDir:    "./certs",
 	}
 	
 	// Save config

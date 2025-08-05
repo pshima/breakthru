@@ -18,6 +18,8 @@ func TestCertificateGenerator_GenerateCertificate(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Test certificate generation
 	domains := []string{"example.com", "www.example.com"}
@@ -59,6 +61,8 @@ func TestCertificateGenerator_GenerateCertificateForHost(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Test single host
 	cert, err := generator.GenerateCertificateForHost("test.example.com")
@@ -90,6 +94,8 @@ func TestCertificateGenerator_GenerateWildcardCertificate(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Test wildcard certificate
 	cert, err := generator.GenerateWildcardCertificate("example.com")
@@ -135,6 +141,8 @@ func TestCertificateGenerator_IPAddresses(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Test certificate with IP addresses
 	domains := []string{"192.168.1.1", "127.0.0.1", "example.com"}
@@ -179,6 +187,8 @@ func TestGeneratedCertificate_ToPEM(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	cert, err := generator.GenerateCertificateForHost("test.example.com")
 	if err != nil {
@@ -223,6 +233,8 @@ func TestGeneratedCertificate_IsExpired(t *testing.T) {
 
 	caManager := setupTestCA(t, tempDir)
 	generator := NewCertificateGenerator(caManager)
+	// Use smaller key size for faster tests
+	generator.SetKeySize(1024)
 
 	// Set short validity period for testing
 	generator.SetValidityPeriod(1) // 1 day

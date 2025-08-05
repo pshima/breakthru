@@ -1,7 +1,6 @@
 package system
 
 import (
-	"runtime"
 	"testing"
 )
 
@@ -16,14 +15,14 @@ func TestProxyFunctions(t *testing.T) {
 			fn: func() error {
 				return EnableSystemProxy("127.0.0.1:8080")
 			},
-			expectError: runtime.GOOS != "windows",
+			expectError: true, // Always expect error since tests can't provide interactive input
 		},
 		{
 			name: "DisableSystemProxy on non-Windows",
 			fn: func() error {
 				return DisableSystemProxy()
 			},
-			expectError: runtime.GOOS != "windows",
+			expectError: true, // Always expect error since tests can't provide interactive input
 		},
 	}
 
@@ -43,15 +42,14 @@ func TestProxyFunctions(t *testing.T) {
 func TestGetSystemProxyStatus(t *testing.T) {
 	enabled, proxyServer, err := GetSystemProxyStatus()
 	
-	if runtime.GOOS != "windows" {
-		if err == nil {
-			t.Errorf("expected error on non-Windows system but got nil")
-		}
-		if enabled {
-			t.Errorf("expected enabled=false on non-Windows system but got true")
-		}
-		if proxyServer != "" {
-			t.Errorf("expected empty proxyServer on non-Windows system but got %s", proxyServer)
-		}
+	// Always expect error since tests can't provide interactive input
+	if err == nil {
+		t.Errorf("expected error due to interactive input requirement but got nil")
+	}
+	if enabled {
+		t.Errorf("expected enabled=false when error occurs but got true")
+	}
+	if proxyServer != "" {
+		t.Errorf("expected empty proxyServer when error occurs but got %s", proxyServer)
 	}
 }
