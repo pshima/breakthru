@@ -1,0 +1,12 @@
+{
+  "port": 8080,
+  "cert_file": "",
+  "key_file": "",
+  "log_file": "breakthru.log",
+  "verbose": false,
+  "https_mode": true,
+  "ca_cert": "",
+  "ca_key": "",
+  "target_hosts": [],
+  "buffer_size": 32768
+}
