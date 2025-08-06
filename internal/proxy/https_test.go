@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -142,7 +143,7 @@ func TestServer_HandleConnect_InterceptionDisabled(t *testing.T) {
 	}
 
 	log, err := logger.New(logger.Config{
-		FilePath: "/dev/null", // Use null device for tests
+		FilePath: filepath.Join(t.TempDir(), "test.log"),
 		Verbose:  false,
 	})
 	if err != nil {
@@ -190,7 +191,7 @@ func TestServer_HandleConnect_DomainBypassed(t *testing.T) {
 	}
 
 	log, err := logger.New(logger.Config{
-		FilePath: "/dev/null", // Use null device for tests
+		FilePath: filepath.Join(t.TempDir(), "test.log"),
 		Verbose:  false,
 	})
 	if err != nil {
@@ -248,7 +249,7 @@ func TestServer_InitializeCertificates(t *testing.T) {
 	}
 
 	log, err := logger.New(logger.Config{
-		FilePath: "/dev/null", // Use null device for tests
+		FilePath: filepath.Join(t.TempDir(), "test.log"),
 		Verbose:  false,
 	})
 	if err != nil {
@@ -297,7 +298,7 @@ func TestServer_InitializeCertificates_NoAutoGenerate(t *testing.T) {
 	}
 
 	log, err := logger.New(logger.Config{
-		FilePath: "/dev/null", // Use null device for tests
+		FilePath: filepath.Join(t.TempDir(), "test.log"),
 		Verbose:  false,
 	})
 	if err != nil {

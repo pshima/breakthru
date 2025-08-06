@@ -8,7 +8,7 @@ A cross-platform HTTPS/WebSocket man-in-the-middle proxy for inspecting video ga
 - **🔐 Certificate Management**: Automatic CA generation and certificate signing for intercepted domains
 - **🌐 WebSocket Support**: Complete WebSocket upgrade handling and frame inspection
 - **🔍 Transparent Mode**: OS-level traffic interception for capturing ALL network traffic including HTTPS
-- **📱 Cross-Platform**: Supports Windows, macOS, and Linux (x64 and ARM64)
+- **📱 Cross-Platform**: Supports Windows, macOS
 - **⚙️ Auto-Configuration**: Automatic system proxy setup with `--enable`/`--disable` flags  
 - **📊 Comprehensive Logging**: Structured logging with error codes and decrypted HTTPS traffic inspection
 - **🎯 Game-Friendly**: Captures traffic from games that ignore proxy settings

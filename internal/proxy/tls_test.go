@@ -3,6 +3,7 @@ package proxy
 import (
 	"crypto/tls"
 	"net"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -142,7 +143,7 @@ func TestCreateTLSConfigForHost(t *testing.T) {
 	}
 
 	log, err := logger.New(logger.Config{
-		FilePath: "/dev/null", // Use null device for tests
+		FilePath: filepath.Join(t.TempDir(), "test.log"),
 		Verbose:  false,
 	})
 	if err != nil {

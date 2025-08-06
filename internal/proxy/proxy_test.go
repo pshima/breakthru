@@ -246,6 +246,8 @@ func TestServer_CreateHandler(t *testing.T) {
 	}
 
 	// Test the handler routes correctly
+	// Note: CONNECT method requires hijacking which httptest.NewRecorder doesn't support
+	// so we only test regular HTTP methods here
 	tests := []struct {
 		name   string
 		method string
@@ -253,13 +255,6 @@ func TestServer_CreateHandler(t *testing.T) {
 		want   string
 		status int
 	}{
-		{
-			name:   "CONNECT method",
-			method: http.MethodConnect,
-			url:    "example.com:443",
-			want:   "Internal Server Error", // Connection will fail with 500
-			status: http.StatusInternalServerError, // Expecting 500 for connection failures
-		},
 		{
 			name:   "GET method",
 			method: http.MethodGet,

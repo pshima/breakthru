@@ -242,11 +242,12 @@ func TestLoad_CLIOverride(t *testing.T) {
 	
 	// Test CLI options override
 	cliOpts := CLIOptions{
-		Port:     9999,
-		CertFile: "cli-cert.pem",
-		KeyFile:  "cli-key.pem",
-		LogFile:  "cli.log",
-		Verbose:  true,
+		Port:       9999,
+		CertFile:   "cli-cert.pem",
+		KeyFile:    "cli-key.pem",
+		LogFile:    "cli.log",
+		Verbose:    true,
+		VerboseSet: true,
 	}
 	
 	cfg, err := Load(configFile, cliOpts)

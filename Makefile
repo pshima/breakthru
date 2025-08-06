@@ -129,7 +129,7 @@ release: clean test build ## Create release artifacts
 	@for file in $(BIN_DIR)/*; do \
 		base=$$(basename $$file); \
 		cp $$file $(BUILD_DIR)/release/; \
-		cd $(BUILD_DIR)/release && tar -czf $$base.tar.gz $$base && rm $$base; \
+		(cd $(BUILD_DIR)/release && tar -czf $$base.tar.gz $$base && rm $$base); \
 	done
 	@echo "Release artifacts created in $(BUILD_DIR)/release/"
 

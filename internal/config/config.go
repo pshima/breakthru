@@ -50,6 +50,10 @@ type CLIOptions struct {
 	Disable         bool
 	TransparentMode bool
 	
+	// Flags to track which options were explicitly set
+	VerboseSet         bool
+	TransparentModeSet bool
+	
 	// Certificate management CLI options
 	GenerateCA    bool
 	CertInfo      string
@@ -116,10 +120,10 @@ func Load(configFile string, cliOpts CLIOptions) (*Config, error) {
 	if cliOpts.LogFile != "" {
 		cfg.LogFile = cliOpts.LogFile
 	}
-	if cliOpts.Verbose {
+	if cliOpts.VerboseSet {
 		cfg.Verbose = cliOpts.Verbose
 	}
-	if cliOpts.TransparentMode {
+	if cliOpts.TransparentModeSet {
 		cfg.TransparentMode = cliOpts.TransparentMode
 	}
 

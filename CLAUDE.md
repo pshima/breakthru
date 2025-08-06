@@ -25,6 +25,7 @@
 ### General
 - This application will not use docker, never try and create any docker configuration or include any docker documentation
 - This appliaction will never run as a service, do not include any documentation about how to run it as a service
+- Linux is not currently supported, do not add it to any code or README files
 
 ### Error Handling and Debugging
 - Debugging is a critical part of software development, always create the necessary basic debugging abilities
