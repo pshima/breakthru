@@ -11,7 +11,7 @@ A cross-platform HTTPS/WebSocket man-in-the-middle proxy for inspecting video ga
 - **📱 Cross-Platform**: Supports Windows, macOS
 - **⚙️ Auto-Configuration**: Automatic system proxy setup with `--enable`/`--disable` flags  
 - **📊 Comprehensive Logging**: Structured logging with error codes and decrypted HTTPS traffic inspection
-- **🎯 Game-Friendly**: Captures traffic from games that ignore proxy settings
+- **🎯 Game-Friendly**: Works with games when configured as system proxy (transparent mode in development)
 - **📦 Single Binary**: No dependencies, just download and run
 - **🔧 Configurable**: Domain-based filtering for selective HTTPS interception
 
@@ -74,6 +74,7 @@ make install
 -version         Show version information
 -enable          Enable system proxy (Windows/macOS)
 -disable         Disable system proxy (Windows/macOS)
+-transparent     Enable transparent proxy mode (experimental, requires root/admin)
 ```
 
 ### Configuration File
@@ -173,17 +174,26 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 # Select ./certs/ca.crt and check "Trust this CA to identify websites"
 ```
 
-### Game Traffic Monitoring Example
+### Game Traffic Monitoring
 
+**Current Capabilities:**
+- ✅ Captures traffic from games that respect system proxy settings (use `-enable` flag)
+- ✅ Decrypts HTTPS traffic when CA certificate is installed
+- ⚠️ Transparent mode (`-transparent`) for bypassing apps is experimental and not fully implemented
+
+**Example Usage:**
 ```bash
+# Start proxy with system configuration (recommended for games)
+./breakthru -enable -port 8080 -verbose
+
 # Monitor API calls in real-time
-tail -f game-traffic.log | grep "api.gamestudio.com"
+tail -f breakthru.log | grep "api.gamestudio.com"
 
 # Extract all JSON responses
-grep "response_body" game-traffic.log | jq '.'
+grep "response_body" breakthru.log | jq '.'
 
 # Find authentication requests
-grep -E "login|auth|token" game-traffic.log
+grep -E "login|auth|token" breakthru.log
 ```
 
 #### Configuring System Proxy:
